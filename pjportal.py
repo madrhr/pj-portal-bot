@@ -135,13 +135,15 @@ def extract_table_from_response(response):
                         hospital = elem.xpath('.//text()')[2].strip()
                         parsing_result_dict[pj_tag][hospital] = {term_desc[0]: None, term_desc[1]: None, term_desc[2]: None}
      
-                    if (elem.attrib["class"]) in [" tertial_verfuegbarkeit   verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit   ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  ", " tertial_verfuegbarkeit ausgebucht  "]:
+                    if (elem.attrib["class"]) in ["tertial_verfuegbarkeit_beendet  ", " tertial_verfuegbarkeit   verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit   ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  ", " tertial_verfuegbarkeit ausgebucht  "]:
                         testint = elem.xpath('.//text()')
                         try:
                             slots = elem.xpath('.//text()')[0].strip()
                         except:
                             slots = '0/0'
                         slots = slots or '0/0'
+                        if slots == 'Tertial beendet':
+                            slots = '0/0'
                         parsing_result_dict[pj_tag][hospital][term_desc[tertiar_counter]] = tuple(map(int, slots.split('/')))
                         tertiar_counter += 1
 
