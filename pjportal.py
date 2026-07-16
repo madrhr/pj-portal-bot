@@ -8,6 +8,8 @@ import http.client, urllib
 from lxml import html
 
 
+
+
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.INFO,
@@ -135,13 +137,15 @@ def extract_table_from_response(response):
                         hospital = elem.xpath('.//text()')[2].strip()
                         parsing_result_dict[pj_tag][hospital] = {term_desc[0]: None, term_desc[1]: None, term_desc[2]: None}
      
-                    if (elem.attrib["class"]) in [" tertial_verfuegbarkeit   verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit   ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  ", " tertial_verfuegbarkeit ausgebucht  "]:
+                    if (elem.attrib["class"]) in ["tertial_verfuegbarkeit_beendet  ", " tertial_verfuegbarkeit   verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit   ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  ", " tertial_verfuegbarkeit ausgebucht  "]:
                         testint = elem.xpath('.//text()')
                         try:
                             slots = elem.xpath('.//text()')[0].strip()
                         except:
                             slots = '0/0'
                         slots = slots or '0/0'
+                        if slots == 'Tertial beendet':
+                            slots = '0/0'
                         parsing_result_dict[pj_tag][hospital][term_desc[tertiar_counter]] = tuple(map(int, slots.split('/')))
                         tertiar_counter += 1
 
@@ -235,28 +239,29 @@ def run_main():
 MAX_RETRIES = 5 
 
 if __name__ == "__main__":
-    logging.info("--------------------------------------------")
-    logging.info("Script started")
-    logging.info("Loading ENV...")
     ENV_VAR = load_env()
-    sleeptime = random.randint(int(ENV_VAR['check_frequency_lower_limit']), int(ENV_VAR['check_frequency_upper_limit']))
-    logging.info(f"Sleeping for {sleeptime}s...")
-    time.sleep(sleeptime)
-    retries = 0
-    while retries < MAX_RETRIES:
-        try:
-            run_main()
-            if retries > 0:
-                logging.info(f"Script executed successfully after {retries} retries.")
-            break
-        except Exception as e:
-            retries += 1
-            logging.error(f"Attempt {retries} failed with error: {e}")
-            if retries >= MAX_RETRIES:
-                error_msg = f"pj-portal.py failed after {MAX_RETRIES} attempts with error: {e}"
-                send_push_message(msg=f"Script Failure! Script will be stopped. Following error occurred: {error_msg}")
-                sys.exit(1)
-            else:
-                wait_time = 2 ** retries
-                logging.info(f"Retrying in {wait_time} seconds...")
-                time.sleep(wait_time)
+    while True:  # <-- run forever
+        logging.info("--------------------------------------------")
+        logging.info("Script started")
+        sleeptime = random.randint(int(ENV_VAR['check_frequency_lower_limit']), int(ENV_VAR['check_frequency_upper_limit']))
+        logging.info(f"Sleeping for {sleeptime}s...")
+        time.sleep(sleeptime)
+
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                run_main()
+                if retries > 0:
+                    logging.info(f"Script executed successfully after {retries} retries.")
+                break
+            except Exception as e:
+                retries += 1
+                logging.error(f"Attempt {retries} failed with error: {e}")
+                if retries >= MAX_RETRIES:
+                    error_msg = f"pj-portal.py failed after {MAX_RETRIES} attempts with error: {e}"
+                    send_push_message(msg=f"Script Failure! Following error occurred: {error_msg}")
+                    sys.exit(1)  # note: this will still kill the whole process, see below
+                else:
+                    wait_time = 2 ** retries
+                    logging.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
