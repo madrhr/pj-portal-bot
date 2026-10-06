@@ -61,15 +61,15 @@ def get_auth_session_cookie(session):
     logging.info("Starting authentication...")
     session.headers.update({
         "Origin": "https://www.pj-portal.de",
-        "Referer": "https://www.pj-portal.de/index_uu.php",
+        "Referer": "https://www.pj-portal.de/",
     })
     data = {
-        "name_Login": "Login",
+        "name_form_login": "form_login",
         "USER_NAME": ENV_VAR["pjportal_user"],
         "PASSWORT": ENV_VAR["pjportal_pwd"],
-        "form_login_submit": "anmelden"
+        "form_login_buttons": ""
     }
-    url = "https://www.pj-portal.de/index_uu.php"
+    url = "https://www.pj-portal.de/"
     response = session.post(url, data=data)
     new_cookie = session.cookies.get_dict().get("PHPSESSID")
     if new_cookie:
@@ -104,6 +104,9 @@ def request_open_slots(session, cookie=None):
 
 
 
+def class_to_list(class_string):
+    return [cls for cls in class_string.split() if cls]
+
 def extract_table_from_response(response):
 
     parsing_result_dict = {}
@@ -118,29 +121,29 @@ def extract_table_from_response(response):
     for row in tree.xpath(f"{main_xpath}"):
         
         i+=1
-        if row.attrib["class"] == "merkliste pj_info_fach":
+        if "merkliste" in row.attrib["class"] and "pj_angebot_fach" in row.attrib["class"]:
             cols = row.xpath('.//td')
             for elem in cols:
-                if (elem.attrib["class"]) == ' ':
+                if "pj_angebot_fach_angabe" in elem.attrib["class"]:
                     pj_tag = elem.xpath('.//text()')[0].strip()
                     parsing_result_dict[pj_tag] = {}
 
-        elif row.attrib["class"] == "merkliste_krankenhaus":
+        elif "pj_angebot_krankenhaus_fach_info" in row.attrib["class"]:
             cols = row.xpath('.//td')
             tertiar_counter = 0
             term_desc = ["first_term", "second_term", "third_term"]
             for elem in cols:
                 if 'class' in elem.attrib:
 
-                    if (elem.attrib["class"]) == "pj_info_bezeichnung_krankenhaus ":
+                    if "pj_angebot_krankenhaus_fach" in elem.attrib["class"]:
 
-                        hospital = elem.xpath('.//text()')[2].strip()
+                        hospital = elem.xpath('.//p[@class="pj_angebot_bezeichnung_Krankenhaus"]/text()')[0].strip()
                         parsing_result_dict[pj_tag][hospital] = {term_desc[0]: None, term_desc[1]: None, term_desc[2]: None}
      
-                    if (elem.attrib["class"]) in ["tertial_verfuegbarkeit_beendet  ", " tertial_verfuegbarkeit   verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit   ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  buchungsphase  ", " tertial_verfuegbarkeit ausgebucht  buchungsphase  ", " tertial_verfuegbarkeit verfuegbar  ", " tertial_verfuegbarkeit ausgebucht  "]:
+                    if any(item in class_to_list(elem.attrib["class"]) for item in ["tertial_verfuegbarkeit_beendet", "tertial_angebot_verfuegbarkeit"]):
                         testint = elem.xpath('.//text()')
                         try:
-                            slots = elem.xpath('.//text()')[0].strip()
+                            slots = elem.xpath('.//text()')[1].strip()
                         except:
                             slots = '0/0'
                         slots = slots or '0/0'
